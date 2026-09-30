@@ -15,7 +15,7 @@
 #endif
 
 /*
-    // Definitions
+    // Helper functions
 */
 
 int ends_with(const char* haystack, const char* needle){
@@ -31,6 +31,10 @@ int ends_with(const char* haystack, const char* needle){
     return TRUE;
 }
 
+
+/*
+    // Definitions
+*/
 
 
 struct _XMLAttribute{
@@ -87,6 +91,14 @@ typedef struct _XMLDocument XMLDocument;
 
 int XMLDocument_load(XMLDocument* doc, const char* path);
 void XMLDocument_free(XMLDocument* doc);
+
+
+enum _TagType{
+    TAG_START,
+    TAG_INLINE
+};
+typedef enum _TagType TagType;
+
 
 /*
     // Implementations    
@@ -178,7 +190,7 @@ char* XMLNode_attr_val(XMLNode* node, char* key){
     return NULL;
 }
 
-static void parse_attrs(char* buff, int* i, char* lex, int* lexi, XMLNode* curr_node){
+static TagType parse_attrs(char* buff, int* i, char* lex, int* lexi, XMLNode* curr_node){
     XMLAttribute curr_attr = {0, 0};
     while(buff[*i] != '>'){
         lex[(*lexi)++] = buff[(*i)++];
@@ -195,7 +207,6 @@ static void parse_attrs(char* buff, int* i, char* lex, int* lexi, XMLNode* curr_
         // Usually ignore space
         if(lex[*lexi-1] == ' '){
             (*lexi)--;
-            continue;
         }
 
         // Attribute key
@@ -210,7 +221,6 @@ static void parse_attrs(char* buff, int* i, char* lex, int* lexi, XMLNode* curr_
         if(buff[*i] == '"'){
             if(!curr_attr.key){
                 fprintf(stderr, "Value has no key\n");
-                return;
             }
 
             *lexi = 0;
@@ -228,7 +238,19 @@ static void parse_attrs(char* buff, int* i, char* lex, int* lexi, XMLNode* curr_
             (*i)++;
             continue;
         }
+
+        // Inline mode
+        if(buff[*i - 1] == '/' && buff[*i] == '>'){
+            lex[*lexi] = '\0';
+            if(!curr_node->tag){
+                curr_node->tag = strdup(lex);
+            }
+            (*i)++;
+            return TAG_INLINE;
+        }
     }
+
+    return TAG_START;
 }
 
 
@@ -336,19 +358,18 @@ int XMLDocument_load(XMLDocument* doc, const char* path){
                     continue;
                 }
 
-
-
-
             }
-
-
 
             // Set current Node
             curr_node = XMLNode_new(curr_node);
 
             // Start tag
             i++;
-            parse_attrs(buff, &i, lex, &lexi, curr_node);
+            if(parse_attrs(buff, &i, lex, &lexi, curr_node) == TAG_INLINE){
+                curr_node = curr_node->parent;
+                i++;
+                continue;
+            }
             
             // Set tag name
             lex[lexi] = '\0';

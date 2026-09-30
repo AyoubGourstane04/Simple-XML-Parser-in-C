@@ -1,2 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<phone type="iphone">iphone 18 pro max</phone>
+<struct name="Person">
+    <field name="name" type="string"/>
+    <field name="age" type="int"/>
+</struct>

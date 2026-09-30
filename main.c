@@ -1,16 +1,19 @@
 #include "lxml.h"
 
 
-
 int main(){
 
     XMLDocument doc;
 
     if(XMLDocument_load(&doc, "test.xml")){
-        printf("XML Document (version=%s, encoding=%s)\n", doc.version, doc.encoding);
 
-        XMLNode* main_node = XMLNode_child(doc.root, 0);
-        printf("Phone (%s)\n", main_node->attributes.data[0].value);
+        XMLNode* str = XMLNode_child(doc.root, 0);
+        printf("Struct: %s\n", XMLNode_attr_val(str, "name"));
+
+        for(int i=0; i<str->children.size; i++){
+            XMLNode* field = str->children.data[i];
+            printf("%s (%s)\n", XMLNode_attr_val(field, "name"), XMLNode_attr_val(field, "type"));
+        }
 
         XMLDocument_free(&doc);
     }
