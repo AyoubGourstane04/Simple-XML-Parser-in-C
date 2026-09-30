@@ -65,7 +65,8 @@ typedef struct _XMLNodeList XMLNodeList;
 
 void XMLNodeList_init(XMLNodeList* list);
 void XMLNodeList_add(XMLNodeList* list, struct _XMLNode* node);
-
+struct _XMLNode* XMLNodeList_at(XMLNodeList* list, int index);
+void XMLNodeList_free(XMLNodeList* list);
 
 struct _XMLNode{
     char* tag;
@@ -79,7 +80,9 @@ typedef struct _XMLNode XMLNode;
 XMLNode* XMLNode_new(XMLNode* parent);
 void XMLNode_free(XMLNode* node);
 XMLNode* XMLNode_child(XMLNode* parent, int index);
+XMLNodeList* XMLNode_children(XMLNode* parent, const char* tag);
 char* XMLNode_attr_val(XMLNode* node, char* key);
+XMLAttribute* XMLNode_attr(XMLNode* node, char*key);
 
 
 struct _XMLDocument{
@@ -98,6 +101,7 @@ enum _TagType{
     TAG_INLINE
 };
 typedef enum _TagType TagType;
+
 
 
 /*
@@ -140,6 +144,15 @@ void XMLNodeList_add(XMLNodeList* list, XMLNode* node){
     list->data[list->size++] = node;
 }
 
+struct _XMLNode* XMLNodeList_at(XMLNodeList* list, int index){
+    return list->data[index];
+}
+
+void XMLNodeList_free(XMLNodeList* list){
+    free(list);
+}
+
+
 XMLNode* XMLNode_new(XMLNode* parent){
     XMLNode* node = (XMLNode*) malloc(sizeof(XMLNode));
     node->parent = parent;
@@ -178,6 +191,21 @@ XMLNode* XMLNode_child(XMLNode* parent, int index){
     return parent->children.data[index];
 }
 
+XMLNodeList* XMLNode_children(XMLNode* parent, const char* tag){
+    XMLNodeList* list = (XMLNodeList*) malloc(sizeof(XMLNodeList));
+    XMLNodeList_init(list);
+
+    for(int i=0; i<parent->children.size; i++){
+        XMLNode* child_node = parent->children.data[i];
+        if(!strcmp(child_node->tag, tag)){
+            XMLNodeList_add(list, child_node);
+        }
+    }
+
+    return list;
+}
+
+
 char* XMLNode_attr_val(XMLNode* node, char* key){
 
     for(int i=0; i<node->attributes.size; i++){
@@ -186,9 +214,22 @@ char* XMLNode_attr_val(XMLNode* node, char* key){
         }
     }
 
-    fprintf(stderr, "No attribute with %s key exists\n", key);
+    fprintf(stderr, "No attribute with key : '%s' exists\n", key);
     return NULL;
 }
+
+XMLAttribute* XMLNode_attr(XMLNode* node, char*key){
+     for(int i=0; i<node->attributes.size; i++){
+        if(!strcmp(node->attributes.data[i].key, key)){
+            XMLAttribute* attr = &node->attributes.data[i];
+            return attr;
+        }
+    }
+
+    fprintf(stderr, "No attribute with key : '%s'  exists\n", key);
+    return NULL;
+}
+
 
 static TagType parse_attrs(char* buff, int* i, char* lex, int* lexi, XMLNode* curr_node){
     XMLAttribute curr_attr = {0, 0};
