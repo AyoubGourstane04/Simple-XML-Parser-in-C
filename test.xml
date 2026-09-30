@@ -1,5 +1,2 @@
-<!-- This is a comment -->
-<phone type="iphone">
-    <!-- This is a comment -->
-    <model>iphone 18 pro max</model>
-</phone>
+<?xml version="1.0" encoding="UTF-8"?>
+<phone type="iphone">iphone 18 pro max</phone>

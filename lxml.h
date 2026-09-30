@@ -75,9 +75,13 @@ typedef struct _XMLNode XMLNode;
 XMLNode* XMLNode_new(XMLNode* parent);
 void XMLNode_free(XMLNode* node);
 XMLNode* XMLNode_child(XMLNode* parent, int index);
+char* XMLNode_attr_val(XMLNode* node, char* key);
+
 
 struct _XMLDocument{
     XMLNode* root;
+    char* version;
+    char* encoding;
 };
 typedef struct _XMLDocument XMLDocument;
 
@@ -161,6 +165,72 @@ void XMLNode_free(XMLNode* node){
 XMLNode* XMLNode_child(XMLNode* parent, int index){
     return parent->children.data[index];
 }
+
+char* XMLNode_attr_val(XMLNode* node, char* key){
+
+    for(int i=0; i<node->attributes.size; i++){
+        if(!strcmp(node->attributes.data[i].key, key)){
+            return node->attributes.data[i].value;
+        }
+    }
+
+    fprintf(stderr, "No attribute with %s key exists\n", key);
+    return NULL;
+}
+
+static void parse_attrs(char* buff, int* i, char* lex, int* lexi, XMLNode* curr_node){
+    XMLAttribute curr_attr = {0, 0};
+    while(buff[*i] != '>'){
+        lex[(*lexi)++] = buff[(*i)++];
+
+        // Tag name
+        if(buff[*i] == ' ' && !curr_node->tag){
+            lex[*lexi] = '\0';
+            curr_node->tag = strdup(lex);
+            (*lexi) = 0;
+            (*i)++;
+            continue;
+        }
+
+        // Usually ignore space
+        if(lex[*lexi-1] == ' '){
+            (*lexi)--;
+            continue;
+        }
+
+        // Attribute key
+        if(buff[*i] == '='){
+            lex[*lexi] = '\0';
+            curr_attr.key = strdup(lex);
+            *lexi = 0;
+            continue;
+        }
+
+        // Attribute value
+        if(buff[*i] == '"'){
+            if(!curr_attr.key){
+                fprintf(stderr, "Value has no key\n");
+                return;
+            }
+
+            *lexi = 0;
+            (*i)++;
+
+            while(buff[*i] != '"'){
+                lex[(*lexi)++] = buff[(*i)++];
+            }
+            lex[*lexi] = '\0';
+            curr_attr.value = strdup(lex);
+            XMLAttributeList_add(&curr_node->attributes, &curr_attr);
+            curr_attr.key = NULL;
+            curr_attr.value = NULL;
+            *lexi=0;
+            (*i)++;
+            continue;
+        }
+    }
+}
+
 
 
 int XMLDocument_load(XMLDocument* doc, const char* path){
@@ -248,61 +318,37 @@ int XMLDocument_load(XMLDocument* doc, const char* path){
                 }
             }
 
+            // Declaration tags
+            if(buff[i + 1] == '?'){
+                while(buff[i] != ' ' && buff[i] != '>')
+                    lex[lexi++] = buff[i++];
+
+                lex[lexi] = '\0';
+
+                if(!strcmp(lex, "<?xml")){
+                    lexi = 0;
+                    XMLNode* desc = XMLNode_new(NULL);
+                    parse_attrs(buff, &i, lex, &lexi, desc);
+
+                    doc->version = XMLNode_attr_val(desc, "version");
+                    doc->encoding = XMLNode_attr_val(desc, "encoding");
+
+                    continue;
+                }
+
+
+
+
+            }
+
+
+
             // Set current Node
             curr_node = XMLNode_new(curr_node);
 
             // Start tag
             i++;
-            XMLAttribute curr_attr = {0, 0};
-            while(buff[i] != '>'){
-                lex[lexi++] = buff[i++];
-
-                // Tag name
-                if(buff[i] == ' ' && !curr_node->tag){
-                    lex[lexi] = '\0';
-                    curr_node->tag = strdup(lex);
-                    lexi = 0;
-                    i++;
-                    continue;
-                }
-
-                // Usually ignore space
-                if(lex[lexi-1] == ' '){
-                    lexi--;
-                    continue;
-                }
-
-                // Attribute key
-                if(buff[i] == '='){
-                    lex[lexi] = '\0';
-                    curr_attr.key = strdup(lex);
-                    lexi = 0;
-                    continue;
-                }
-
-                // Attribute value
-                if(buff[i] == '"'){
-                    if(!curr_attr.key){
-                        fprintf(stderr, "Value has no key\n");
-                        return FALSE;
-                    }
-
-                    lexi = 0;
-                    i++;
-
-                    while(buff[i] != '"'){
-                        lex[lexi++] = buff[i++];
-                    }
-                    lex[lexi] = '\0';
-                    curr_attr.value = strdup(lex);
-                    XMLAttributeList_add(&curr_node->attributes, &curr_attr);
-                    curr_attr.key = NULL;
-                    curr_attr.value = NULL;
-                    lexi=0;
-                    i++;
-                    continue;
-                }
-            }
+            parse_attrs(buff, &i, lex, &lexi, curr_node);
             
             // Set tag name
             lex[lexi] = '\0';

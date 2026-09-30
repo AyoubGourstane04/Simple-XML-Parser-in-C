@@ -7,11 +7,10 @@ int main(){
     XMLDocument doc;
 
     if(XMLDocument_load(&doc, "test.xml")){
+        printf("XML Document (version=%s, encoding=%s)\n", doc.version, doc.encoding);
+
         XMLNode* main_node = XMLNode_child(doc.root, 0);
-        printf("%d Children\n", main_node->children.size);
-        
-        XMLNode* description_node = XMLNode_child(main_node, 0);
-        printf("%s : %s\n", description_node->tag, description_node->inner_text);
+        printf("Phone (%s)\n", main_node->attributes.data[0].value);
 
         XMLDocument_free(&doc);
     }
